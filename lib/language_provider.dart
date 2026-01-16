@@ -46,6 +46,8 @@ class LanguageProvider extends ChangeNotifier {
       'enterAllErr': 'Adını ve Oda Kodunu gir!',
       'error': 'Bir hata oluştu!',
       'roomNotFound': 'Oda bulunamadı veya hata oluştu.',
+      'shuffle': 'Karıştır',
+      
       
       // --- İŞTE EKSİK OLAN KISIM (TÜRKÇE) ---
       'rulesContent': 
@@ -98,6 +100,8 @@ class LanguageProvider extends ChangeNotifier {
       'enterAllErr': 'Enter your name and Room Code!',
       'error': 'An error occurred!',
       'roomNotFound': 'Room not found or error occurred.',
+      'shuffle': 'Shuffle',
+      
 
       // --- İŞTE EKSİK OLAN KISIM (İNGİLİZCE) ---
       'rulesContent': 

@@ -38,6 +38,9 @@ dependencies:
   firebase_core: ^3.6.0  # Firebase'i başlatmak için
   cloud_firestore: ^5.4.0 # Veritabanı için
 
+
+  shared_preferences: ^2.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
