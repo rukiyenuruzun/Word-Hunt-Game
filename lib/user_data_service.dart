@@ -1,10 +1,8 @@
-// user_data_service.dart - YENİ DOSYA OLUŞTUR
-
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UserDataService {
   static const String _totalCoinsKey = 'total_coins';
-  static const String _ownedPowerUpsKey = 'owned_powerups';
+  // _ownedPowerUpsKey silindi ✅
 
   // --- TOPLAM COIN OKUMA ---
   static Future<int> getTotalCoins() async {
