@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "27558873506",
+    "project_id": "kelime-turetmece-online",
+    "storage_bucket": "kelime-turetmece-online.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:27558873506:android:3fdcc4a15adb5c80d60afb",
+        "android_client_info": {
+          "package_name": "com.example.kelime_turetmece"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAllgKIWy56Lesrv5HdyhX5wZa6RzRV0rU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
