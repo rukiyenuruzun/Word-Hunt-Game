@@ -237,75 +237,381 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   // --- 4. SONUÇ EKRANI (DÜZELTİLDİ: SİYAH YAZI) ---
-  void showResultsDialog() {
-    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
+ // ===== GAME_SCREEN.DART İÇİNDEKİ showResultsDialog() FONKSİYONUNU BU KODLA DEĞİŞTİR =====
+// ===== OVERFLOW SORUNLARI DÜZELTİLMİŞ showResultsDialog =====
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Text(langProvider.getText('gameOver')),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Text(
-                  '${langProvider.getText('totalScore')} ${totalScore.toStringAsFixed(1)}', 
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+void showResultsDialog() {
+  final langProvider = Provider.of<LanguageProvider>(context, listen: false);
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.black.withOpacity(0.8),
+    builder: (context) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40), // Ekrana sığdır
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700), // Maksimum yükseklik
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: Theme.of(context).brightness == Brightness.dark
+                ? [const Color(0xFF1a1a2e), const Color(0xFF16213e), const Color(0xFF0f3460)]
+                : [const Color(0xFF667eea), const Color(0xFF764ba2), const Color(0xFFf093fb)],
+          ),
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 40,
+              spreadRadius: 10,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ===== BAŞLIK BÖLÜMÜ (SABİT) =====
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
                 ),
               ),
-              const SizedBox(height: 20),
-              const Divider(),
-              
-              if (correctWords.isNotEmpty) ...[
-                Text(langProvider.getText('correct'), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                Wrap(
-                  spacing: 8.0,
-                  children: correctWords.map((w) => Chip(
-                    label: Text(w, style: const TextStyle(color: Colors.black)), // <-- BURASI DEĞİŞTİ (SİYAH YAPILDI)
-                    backgroundColor: Colors.green.shade100,
-                  )).toList(),
-                ),
-                const SizedBox(height: 10),
-              ],
+              child: Column(
+                children: [
+                  // İkon
+                  Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [Colors.amber.shade300, Colors.orange.shade400],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.amber.withOpacity(0.5),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.emoji_events, size: 40, color: Colors.white),
+                  ),
+                  
+                  const SizedBox(height: 10),
+                  
+                  Text(
+                    langProvider.getText('gameOver'),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 10),
+                  
+                  // Puan (Tek satırda, taşmaz)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.2),
+                          Colors.white.withOpacity(0.1),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 22),
+                        const SizedBox(width: 8),
+                        Flexible( // Taşma önleme
+                          child: Text(
+                            '${langProvider.getText('totalScore')} ${totalScore.toStringAsFixed(1)}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-              if (wrongWords.isNotEmpty) ...[
-                Text(langProvider.getText('wrong'), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                Wrap(
-                  spacing: 8.0,
-                  children: wrongWords.map((w) => Chip(
-                    label: Text(w, style: const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.black)), // <-- BURASI DEĞİŞTİ
-                    backgroundColor: Colors.red.shade100,
-                  )).toList(),
+            // ===== İÇERİK BÖLÜMÜ (SCROLLABLE) =====
+            Expanded( // Flexible yerine Expanded - kalan alanı doldurur
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ✅ DOĞRU KELİMELER
+                    if (correctWords.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded( // Taşma önleme
+                            child: Text(
+                              langProvider.getText('correct'),
+                              style: const TextStyle(
+                                color: Colors.greenAccent,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${correctWords.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 12),
+                      
+                      // Kelime Chipları - Wrap kullan (otomatik satır atlar)
+                      Wrap(
+                        spacing: 6.0,
+                        runSpacing: 6.0,
+                        children: correctWords.map((w) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.green.shade400, Colors.green.shade600],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              w,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      
+                      const SizedBox(height: 20),
+                    ],
+
+                    // ❌ YANLIŞ KELİMELER
+                    if (wrongWords.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.cancel, color: Colors.red, size: 20),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              langProvider.getText('wrong'),
+                              style: const TextStyle(
+                                color: Colors.redAccent,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${wrongWords.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 12),
+                      
+                      Wrap(
+                        spacing: 6.0,
+                        runSpacing: 6.0,
+                        children: wrongWords.map((w) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.red.shade400, Colors.red.shade600],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              w,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                decoration: TextDecoration.lineThrough,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+
+                    // Hiç kelime yoksa
+                    if (correctWords.isEmpty && wrongWords.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(30),
+                          child: Text(
+                            langProvider.languageCode == 'tr'
+                                ? '😔 Hiç kelime girmedin!'
+                                : '😔 No words entered!',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.7),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              ],
-            ],
-          ),
+              ),
+            ),
+
+            // ===== BUTONLAR (SABİT ALTA) =====
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+              child: Row(
+                children: [
+                  // Ana Menü
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).pop();
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: Colors.white.withOpacity(0.1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.home, color: Colors.white70, size: 20),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              langProvider.getText('menu'),
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // Devam Et
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        startNewRound();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.deepPurple,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 8,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.refresh, size: 20),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              langProvider.getText('continue'),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text(langProvider.getText('menu')),
-          ),
-
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              startNewRound();
-            },
-            child: Text(langProvider.getText('continue')),
-          ),
-        ],
       ),
-    );
-  }
-
+    ),
+  );
+}
   @override
  // ===== GAME_SCREEN.DART İÇİNDEKİ build() METODUNU BU KODLA DEĞİŞTİR =====
 // (Dosyanın başındaki import'lar ve diğer metodlar AYNEN KALACAK)
