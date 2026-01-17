@@ -56,7 +56,7 @@ class _MarketScreenState extends State<MarketScreen> with SingleTickerProviderSt
   Future<void> _buyShuffle() async {
     final langProvider = Provider.of<LanguageProvider>(context, listen: false);
     
-    bool success = await UserDataService.spendCoins(300);
+    bool success = await UserDataService.spendCoins(30);
     
     if (success) {
       await UserDataService.addShuffle(1);
@@ -214,7 +214,7 @@ class _MarketScreenState extends State<MarketScreen> with SingleTickerProviderSt
                               description: langProvider.languageCode == 'tr'
                                   ? 'Hedef kelimenin harflerini karıştırır'
                                   : 'Shuffles the letters of target word',
-                              price: 300,
+                              price: 30,
                               onBuy: _buyShuffle,
                               langProvider: langProvider,
                             ),

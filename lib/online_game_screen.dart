@@ -30,12 +30,13 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
   final FirebaseService _firebaseService = FirebaseService();
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  final ScrollController _scrollController = ScrollController(); // YENİ
+  final ScrollController _scrollController = ScrollController();
 
   List<String> allWords = [];
   List<String> enteredWords = []; 
   
   String currentTargetWord = "";
+  String displayedWord = ""; // YENİ: Gösterilen kelime (karıştırılmış hali)
   double myScore = 0;
   
   Timer? _timer;
@@ -43,10 +44,14 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
   bool _isTimerStarted = false;
   bool _isGameFinished = false;
 
+  int shuffleCount = 0; // YENİ: Shuffle sayısı
+  bool hasUsedShuffle = false; // YENİ: Bu turda shuffle kullanıldı mı
+
   @override
   void initState() {
     super.initState();
     loadDictionary();
+    _loadShuffleCount(); // YENİ
   }
 
   @override
@@ -54,8 +59,16 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
     _timer?.cancel();
     _textController.dispose();
     _focusNode.dispose();
-    _scrollController.dispose(); // YENİ
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  // YENİ: Shuffle sayısını yükle
+  Future<void> _loadShuffleCount() async {
+    int count = await UserDataService.getShuffleCount();
+    setState(() {
+      shuffleCount = count;
+    });
   }
 
   String convertToLowerCase(String input, String langCode) {
@@ -123,8 +136,9 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
       _isTimerStarted = false;
     });
     
+    // DÜZELTME: Coin kazanma round ile
     if (myScore > 0) {
-      int earnedCoins = (myScore * 10).toInt();
+      int earnedCoins = myScore.round();
       await UserDataService.addCoins(earnedCoins);
     }
     
@@ -195,6 +209,52 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
       }
     }
     return true;
+  }
+
+  // YENİ: SHUFFLE FONKSİYONU
+  Future<void> useShuffle() async {
+    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
+    
+    bool success = await UserDataService.useShuffle();
+    
+    if (success) {
+      List<String> chars = displayedWord.split('');
+      chars.shuffle();
+      
+      setState(() {
+        displayedWord = chars.join('');
+        shuffleCount--;
+        hasUsedShuffle = true;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            langProvider.languageCode == 'tr' 
+                ? '🔀 Harfler karıştırıldı!' 
+                : '🔀 Letters shuffled!',
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            langProvider.languageCode == 'tr' 
+                ? '❌ Karıştırma hakkın yok! Market\'ten satın al.' 
+                : '❌ No shuffles available! Buy from store.',
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   void showGameOverDialog(Map<String, dynamic> data) {
@@ -307,21 +367,23 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
     );
   }
 
-  // ===== HEDEF KELİME DEĞİŞİMİ KONTROLÜ (DÜZELTME) =====
   void _handleTargetWordChange(String newWord) {
     if (currentTargetWord != newWord && newWord.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
             currentTargetWord = newWord;
+            displayedWord = newWord; // YENİ: İlk başta normal göster
             enteredWords.clear();
             myScore = 0;
             _textController.clear();
             _isGameFinished = false;
             _remainingTime = 90;
             _isTimerStarted = false;
+            hasUsedShuffle = false; // YENİ: Yeni turda sıfırla
           });
           _timer?.cancel();
+          _loadShuffleCount(); // YENİ: Shuffle sayısını güncelle
         }
       });
     }
@@ -334,7 +396,7 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      resizeToAvoidBottomInset: true, // YENİ: Klavye açıldığında yeniden boyutlandır
+      resizeToAvoidBottomInset: true,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -369,7 +431,6 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
               String status = data['status'];
               String targetWordFromDB = data['targetWord'] ?? "";
 
-              // ===== BEKLEME EKRANI =====
               if (status == 'waiting') {
                 return Center(
                   child: Column(
@@ -453,10 +514,8 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
                 );
               }
 
-              // ===== HEDEF KELİME DEĞİŞİMİ KONTROLÜ (DÜZELTME) =====
               _handleTargetWordChange(targetWordFromDB);
 
-              // ===== OYUN BAŞLADI =====
               if (status == 'playing' && !_isGameFinished) {
                 if (!_isTimerStarted) {
                   int dbDuration = data['gameDuration'] ?? 90;
@@ -469,7 +528,6 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
                 }
               }
 
-              // ===== OYUN BİTTİ =====
               if (_isGameFinished) {
                 return Container(
                   decoration: BoxDecoration(
@@ -525,13 +583,12 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
                 );
               }
 
-              // ===== OYUN ARAYÜZÜ (OVERFLOW DÜZELTİLDİ) =====
               Map<String, dynamic> scores = data['scores'] ?? {};
               List players = data['players'] ?? [];
 
-              return SingleChildScrollView( // YENİ: Tüm içeriği scroll edilebilir yap
+              return SingleChildScrollView(
                 controller: _scrollController,
-                child: ConstrainedBox( // YENİ: Minimum yükseklik
+                child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minHeight: MediaQuery.of(context).size.height - 
                                MediaQuery.of(context).padding.top -
@@ -541,7 +598,6 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        // ===== ÜST BAR =====
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -574,7 +630,6 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
 
                         const SizedBox(height: 20),
 
-                        // ===== SKORBOARD =====
                         Container(
                           padding: const EdgeInsets.all(15),
                           decoration: BoxDecoration(
@@ -647,10 +702,10 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
 
                         const SizedBox(height: 20),
 
-                        // ===== HEDEF KELİME =====
+                        // YENİ: HEDEF KELİME + SHUFFLE BUTONU
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 18),
+                          padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
@@ -668,32 +723,79 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
                               ),
                             ],
                           ),
-                          child: Center(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                currentTargetWord.split('').join('  '),
-                                style: const TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                  letterSpacing: 4,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.black38,
-                                      offset: Offset(0, 3),
-                                      blurRadius: 6,
-                                    ),
-                                  ],
+                          child: Column(
+                            children: [
+                              // Kelime
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  displayedWord.split('').join('  '),
+                                  style: const TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                    letterSpacing: 4,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black38,
+                                        offset: Offset(0, 3),
+                                        blurRadius: 6,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
+                              
+                              // YENİ: SHUFFLE BUTONU
+                              if (shuffleCount > 0 && !hasUsedShuffle) ...[
+                                const SizedBox(height: 15),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFFffd700), Color(0xFFffed4e)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.amber.withOpacity(0.5),
+                                        blurRadius: 15,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: useShuffle,
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.shuffle, color: Colors.black87, size: 20),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'x$shuffleCount',
+                                              style: const TextStyle(
+                                                color: Colors.black87,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
 
                         const SizedBox(height: 20),
 
-                        // ===== TEXTFIELD =====
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.15),
@@ -731,13 +833,12 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
 
                         const SizedBox(height: 12),
 
-                        // ===== TÜRKÇE HARFLER =====
                         if (showTurkishChars)
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: ['Ç', 'Ğ', 'I', 'Ö', 'Ş', 'Ü'].map((harf) {
+                              children: ['Ç', 'Ğ', 'I', 'İ', 'Ö', 'Ş', 'Ü'].map((harf) {
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 4.0),
                                   child: _buildOnlineLetterButton(harf, langProvider.languageCode),
@@ -775,7 +876,6 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
 
                         const SizedBox(height: 10),
 
-                        // ===== KELİME LİSTESİ (YÜKSEKLİK SINIRLAMASI KALDIRILDI) =====
                         enteredWords.isEmpty
                             ? Padding(
                                 padding: const EdgeInsets.all(40.0),
@@ -790,8 +890,8 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
                                 ),
                               )
                             : ListView.builder(
-                                shrinkWrap: true, // YENİ: İçeriğe göre boyutlan
-                                physics: const NeverScrollableScrollPhysics(), // YENİ: Scroll'u parent'a bırak
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
                                 itemCount: enteredWords.length,
                                 itemBuilder: (context, index) {
                                   final reversedIndex = enteredWords.length - 1 - index;
@@ -868,8 +968,6 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
       ),
     );
   }
-
-  // ===== YARDIMCI WIDGET'LAR =====
 
   Widget _buildOnlineInfoCard({
     required IconData icon,
